@@ -1,0 +1,50 @@
+---
+title: "Reading Mu Files"
+author: "Tristan Caro"
+date: "10/27/2023"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+read_mu <- function(file) {
+  read_table(file, comment = "#", col_names = c("energy", "samnorm")) %>% 
+    mutate(
+      filename = file,
+      sample_id = str_remove(file, ".mu")
+    )
+}
+
+test <- read_mu(file = "data/02_mu/STANDARD_healz_005_001_fl.mu")
+```
+
+
+```{r}
+test %>% ggplot(
+  aes(
+    x = energy,
+    y = samnorm,
+    color = sample_id
+  )
+) +
+  geom_line() +
+  theme_bw() +
+  theme(
+    legend.position = "bottom"
+  )
+```
+
+
+
+
+
