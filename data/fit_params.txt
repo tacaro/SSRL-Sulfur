@@ -11,7 +11,7 @@ Linear
 PreEdg: -200
 Norm: 15
 ## Post-Edge Normalization
-to E: -5
+to E: -5.0
 to E: 76.2
 ## Spline Region
 k: 1.620
