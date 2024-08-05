@@ -1,0 +1,88 @@
+---
+title: "01_metadata_setup"
+author: "Tristan Caro"
+format: html
+editor: visual
+---
+
+## Setup
+
+```{r}
+library(tidyverse)
+source("source/read_mu_file.R")
+```
+
+## Import the data
+
+Create a function for importing:
+
+```{r}
+import_many_mu_files <- function(directory) {
+  directory |> 
+  map(read_mu) |> 
+  bind_rows(.id = "file")
+} 
+
+```
+
+Import Dec 2022 data
+
+```{r}
+dec22_fp <- "data/bl143_dec22/02_mu/"
+dec22_files <- list.files(path = dec22_fp, pattern = "\\.mu$", full.names = TRUE)
+dec22_data <- import_many_mu_files(dec22_files) |> 
+  mutate(run = "dec_2022")
+```
+
+Import Dec 2023 data
+
+```{r}
+dec23_fp <- "data/bl143_dec23/02_mu/"
+dec23_files <- list.files(path = dec23_fp, pattern = "\\.mu$", full.names = TRUE)
+dec23_data <- import_many_mu_files(dec23_files)|> 
+  mutate(run = "dec_2023")
+```
+
+Import Jun 2024 data
+
+```{r}
+jun24_fp <- "data/bl143_jun24/02_mu/"
+jun24_files <- list.files(path = jun24_fp, pattern = "\\.mu$", full.names = TRUE)
+jun24_data <- import_many_mu_files(jun24_files) |> 
+  mutate(run = "jun_2024")
+```
+
+Combine into one big tibble
+
+```{r}
+full_dataset <- bind_rows(
+  dec22_data, dec23_data, jun24_data
+)
+
+saveRDS(full_dataset, file = "cache/xanes_data_raw.RDS")
+```
+
+Export a list of all files to build metadata
+
+```{r}
+full_metadata <- full_dataset |> 
+  distinct(filename) |> 
+  mutate(
+    core = case_when(
+      str_detect(filename, "BA1B") ~ "BA1B",
+      str_detect(filename, "BA4A") ~ "BA4A",
+      str_detect(filename, "BA3A") ~ "BA3A",
+      TRUE ~ NA
+    ),
+    is_TLE = case_when(
+      str_detect(filename, "TLE") ~ TRUE,
+      TRUE ~ FALSE
+    )
+  )
+```
+
+Write the full dataset to an excel file
+
+```{r}
+full_metadata |> writexl::write_xlsx(path = "data/metadata.xlsx")
+```
