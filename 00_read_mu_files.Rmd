@@ -1,0 +1,116 @@
+---
+title: "Reading Mu Files"
+author: "Tristan Caro"
+date: "10/27/2023"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r}
+library(tidyverse)
+```
+
+
+```{r}
+read_mu <- function(file) {
+  require(readr)
+  read_table(file, comment = "#", col_names = c("energy", "samnorm")) %>% 
+    mutate(
+      filename = file,
+      sample_id = str_remove(file, ".mu")
+    )
+}
+
+
+```
+
+
+```{r}
+file_path <- "data/bl143_dec22/02_mu/" #folder the mus are in
+standards_file_path <- list.files(path = file_path, pattern = "STANDARD.*\\.mu", full.names = TRUE)
+  
+
+# create a tibble
+standard_mus <- standards_file_path |> 
+  map(read_mu) |> 
+  bind_rows(.id = "file") |> 
+  mutate(sample_name = str_extract(sample_id, "(?<=STANDARD_).*?(?=_)"))
+
+
+
+  
+```
+
+### Plot the standards
+
+```{r}
+p_stds <- standard_mus |> 
+  ggplot(
+    aes(
+      x = energy,
+      y = samnorm,
+      color = sample_name
+    )
+  ) +
+  geom_line() +
+  coord_cartesian(expand = FALSE) +
+  labs(
+    x = "Energy (eV)",
+    y = "Normalized Absorption",
+    color = ""
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom"
+  )
+p_stds
+
+cowplot::save_plot(
+  plot = p_stds,
+  filename = "fig_output/standards_xanes.pdf",
+  base_height = 6,
+  base_width = 6
+)
+```
+
+### Standards Zoomed
+```{r}
+p_stds_zoom <- standard_mus |> 
+  ggplot(
+    aes(
+      x = energy,
+      y = samnorm,
+      color = sample_name
+    )
+  ) +
+  geom_line() +
+  coord_cartesian(expand = FALSE, xlim = c(2468, 2485)) +
+  scale_x_continuous(
+    sec.axis = dup_axis(name = NULL)
+  ) +
+  labs(
+    x = "Energy (eV)",
+    y = "Normalized Absorption",
+    color = ""
+  ) +
+  theme_bw() +
+  theme(
+    legend.position = "bottom"
+  )
+p_stds_zoom
+
+cowplot::save_plot(
+  plot = p_stds_zoom,
+  filename = "fig_output/standards_xanes_zoom.pdf",
+  base_height = 6,
+  base_width = 6
+)
+```
+
+
+
