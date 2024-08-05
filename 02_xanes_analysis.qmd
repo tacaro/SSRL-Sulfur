@@ -1,0 +1,142 @@
+---
+title: "02_xanes_analysis"
+format: html
+editor: visual
+---
+
+## Setup
+
+```{r}
+library(tidyverse)
+source("source/read_mu_file.R")
+source("source/read_many_mu_files.R")
+```
+
+```{r}
+xanes <- read_rds("cache/xanes_data_raw.RDS")
+
+metadata <- readxl::read_excel("data/metadata_annotated.xlsx", na = "NA")
+```
+
+Join xanes data and metadata
+
+```{r}
+xanes_w_metadata <- xanes |> 
+  left_join(metadata, by = join_by(filename))
+```
+
+Separate out organics
+
+```{r}
+xanes_TLE <- xanes_w_metadata |> 
+  filter(is_TLE)
+```
+
+Find pre-edge max of TLE standards
+
+```{r}
+xanes_TLE_STD_max <- xanes_TLE |> 
+  filter(is_standard) |> 
+  group_by(compound) |> 
+  # find the eV that is max samnorm
+  summarise(
+    energy = energy[which.max(samnorm)],
+    samnorm = max(samnorm)
+    ) |> 
+  ungroup()
+```
+
+
+## Plot TLE XANES
+
+```{r}
+p_tle_standards <- xanes_TLE |> 
+  filter(compound != "BA1B_280") |> 
+  filter(is_standard) |> 
+  ggplot(
+    aes(
+      x = energy,
+      y = samnorm,
+      color = compound,
+      fill = compound
+    )
+  ) +
+  scale_fill_brewer(palette = "Set1") +
+  scale_color_brewer(palette = "Set1") +
+  geom_vline(
+    data = xanes_TLE_STD_max,
+    aes(xintercept = energy,
+        color = compound),
+    linewidth = 0.25
+  ) +
+  geom_line(linewidth = 1) +
+  coord_cartesian(xlim = c(2465, 2505)) +
+  labs(
+    x = "Energy (eV)",
+    y = "Normalized Absorption"
+  ) +
+  theme_bw() +
+  theme()
+p_tle_standards
+
+# cowplot::save_plot(
+#   plot = p_tle_standards,
+#   filename = "fig_output/tle_standards.pdf",
+#   base_height = 6,
+#   base_width = 9
+# )
+```
+
+Plot TLE Samples
+
+```{r}
+xanes_TLE |> 
+  filter(!is_standard) |> 
+  filter(!is_TLE_blank) |> 
+  filter(!is_GFF) |> 
+  ggplot(
+    aes(
+      x = energy,
+      y = samnorm,
+      color = compound,
+      fill = compound
+    )
+  ) +
+  geom_vline(
+    data = xanes_TLE_STD_max,
+    aes(xintercept = energy),
+    color = "gray",
+    linewidth = 0.25
+  ) +
+  geom_line(linewidth = 1) +
+  coord_cartesian(xlim = c(2465, 2505)) +
+  scale_color_viridis_d() +
+  facet_wrap(vars(core)) +
+  labs(
+    x = "Energy (eV)",
+    y = "Normalized Absorption"
+  ) +
+  theme_bw() +
+  theme()
+  
+```
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
