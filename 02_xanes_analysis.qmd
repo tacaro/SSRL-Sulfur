@@ -10,6 +10,7 @@ editor: visual
 library(tidyverse)
 source("source/read_mu_file.R")
 source("source/read_many_mu_files.R")
+source("source/theme_xas.R")
 ```
 
 ```{r}
@@ -25,14 +26,20 @@ xanes_w_metadata <- xanes |>
   left_join(metadata, by = join_by(filename))
 ```
 
-Separate out organics
+## TLE
 
 ```{r}
 xanes_TLE <- xanes_w_metadata |> 
-  filter(is_TLE)
+  filter(is_TLE) |> 
+  mutate(
+    depth_str = paste(core_depth_m, "m"),
+    depth_fct = as.factor(depth_str),
+    depth_fct = fct_reorder(depth_fct, core_depth_m, .na_rm = FALSE)
+  ) |> 
+  arrange(depth_fct)
 ```
 
-Find pre-edge max of TLE standards
+### Find pre-edge max of TLE standards
 
 ```{r}
 xanes_TLE_STD_max <- xanes_TLE |> 
@@ -46,13 +53,13 @@ xanes_TLE_STD_max <- xanes_TLE |>
   ungroup()
 ```
 
-
-## Plot TLE XANES
+### Plot TLE XANES
 
 ```{r}
 p_tle_standards <- xanes_TLE |> 
   filter(compound != "BA1B_280") |> 
   filter(is_standard) |> 
+  mutate(header = "Standards") |> 
   ggplot(
     aes(
       x = energy,
@@ -67,15 +74,19 @@ p_tle_standards <- xanes_TLE |>
     data = xanes_TLE_STD_max,
     aes(xintercept = energy,
         color = compound),
-    linewidth = 0.25
+    linewidth = 0.25,
+    show.legend = FALSE
   ) +
   geom_line(linewidth = 1) +
   coord_cartesian(xlim = c(2465, 2505)) +
+  ggprism::annotation_ticks(sides = "tb") +
+  facet_wrap(vars(header)) +
   labs(
     x = "Energy (eV)",
-    y = "Normalized Absorption"
+    y = "Normalized Absorption",
+    color = "Standard Compound"
   ) +
-  theme_bw() +
+  theme_xas() +
   theme()
 p_tle_standards
 
@@ -90,16 +101,16 @@ p_tle_standards
 Plot TLE Samples
 
 ```{r}
-xanes_TLE |> 
+p_ba1b <- xanes_TLE |> 
   filter(!is_standard) |> 
   filter(!is_TLE_blank) |> 
   filter(!is_GFF) |> 
+  filter(core == "BA1B") |> 
   ggplot(
     aes(
       x = energy,
       y = samnorm,
-      color = compound,
-      fill = compound
+      color = depth_fct
     )
   ) +
   geom_vline(
@@ -110,33 +121,245 @@ xanes_TLE |>
   ) +
   geom_line(linewidth = 1) +
   coord_cartesian(xlim = c(2465, 2505)) +
-  scale_color_viridis_d() +
+  scale_color_viridis_d(direction = -1, end = 0.9) +
   facet_wrap(vars(core)) +
+  ggprism::annotation_ticks(sides = "tb") +
   labs(
     x = "Energy (eV)",
-    y = "Normalized Absorption"
+    y = "Normalized Absorption",
+    color = "Core Depth"
+  ) +
+  theme_xas() +
+  theme()
+p_ba1b
+```
+
+```{r}
+p_ba4a <- xanes_TLE |> 
+  filter(!is_standard) |> 
+  filter(!is_TLE_blank) |> 
+  filter(!is_GFF) |> 
+  filter(core == "BA4A") |> 
+  ggplot(
+    aes(
+      x = energy,
+      y = samnorm,
+      color = depth_fct
+    )
+  ) +
+  geom_vline(
+    data = xanes_TLE_STD_max,
+    aes(xintercept = energy),
+    color = "gray",
+    linewidth = 0.25
+  ) +
+  geom_line(linewidth = 1) +
+  coord_cartesian(xlim = c(2465, 2505)) +
+  scale_color_viridis_d(direction = -1, end = 0.9) +
+  facet_wrap(vars(core)) +
+  ggprism::annotation_ticks(sides = "tb") +
+  labs(
+    x = "Energy (eV)",
+    y = "Normalized Absorption",
+    color = "",
+  ) +
+  theme_xas() +
+  theme()
+p_ba4a
+```
+
+```{r}
+p_ba3a <- xanes_TLE |> 
+  filter(!is_standard) |> 
+  filter(!is_TLE_blank) |> 
+  filter(!is_GFF) |> 
+  filter(core == "BA3A") |> 
+  ggplot(
+    aes(
+      x = energy,
+      y = samnorm,
+      color = depth_fct
+    )
+  ) +
+  geom_vline(
+    data = xanes_TLE_STD_max,
+    aes(xintercept = energy),
+    color = "gray",
+    linewidth = 0.25
+  ) +
+  geom_line(linewidth = 1) +
+  coord_cartesian(xlim = c(2465, 2505)) +
+  scale_color_viridis_d(direction = -1, end = 0.9) +
+  facet_wrap(vars(core)) +
+  ggprism::annotation_ticks(sides = "tb") +
+  labs(
+    x = "Energy (eV)",
+    y = "Normalized Absorption",
+    color = ""
+  ) +
+  theme_classic() +
+  theme(
+    panel.background = element_rect(color = "black"),
+    strip.background = element_rect(color = "#464747", fill = "#464747"),
+    strip.text = element_text(color = "white"),
+    axis.ticks.x = element_blank()
+  )
+p_ba3a
+```
+
+```{r}
+p_tle_blanks <- xanes_TLE |> 
+  filter(is_TLE_blank) |> 
+  mutate(header = "Controls") |> 
+  ggplot(
+    aes(
+      x = energy,
+      y = samnorm,
+      color = compound
+    )
+  ) +
+  geom_vline(
+    data = xanes_TLE_STD_max,
+    aes(xintercept = energy),
+    linewidth = 0.25,
+    color = "gray",
+    show.legend = FALSE
+  ) +
+  geom_line(linewidth = 1) +
+  coord_cartesian(xlim = c(2465, 2505)) +
+  ggprism::annotation_ticks(sides = "tb") +
+  facet_wrap(vars(header)) +
+  labs(
+    x = "Energy (eV)",
+    y = "Normalized Absorption",
+    color = "Control"
+  ) +
+  theme_xas() +
+  theme()
+p_tle_blanks
+```
+
+```{r}
+p_tle_combined <- cowplot::plot_grid(p_ba1b, p_ba4a, p_ba3a, p_tle_standards, p_tle_blanks, ncol = 1, align = "hv", axis = "b")
+
+p_tle_combined
+
+# cowplot::save_plot(
+#   filename = "fig_output/tle_combined_plot.pdf",
+#   plot = p_tle_combined,
+#   base_height = 12,
+#   base_width = 8
+# )
+```
+
+## Mineral Standards
+
+```{r}
+xanes_stds <- xanes_w_metadata |> 
+  filter(!is_TLE, is_standard)
+
+```
+
+### Find pre-edge max of mineral standards
+
+```{r}
+xanes_stds_max <- xanes_stds |> 
+  filter(is_standard) |> 
+  group_by(compound) |> 
+  # find the eV that is max samnorm
+  summarise(
+    ev_at_max = energy[which.max(samnorm)],
+    samnorm_at_max = max(samnorm)
+    ) |> 
+  ungroup() |> 
+  mutate(
+    compound = factor(compound, levels = c(
+      "Valleriite",
+      "Millerite",
+      "Heazlewoodite",
+      "Covellite",
+      "Marcasite",
+      "Pyrite",
+      "Pyrrhotite",
+      "Pentlandite",
+      "Sphalerite",
+      "Wurtzite",
+      "Polydymite",
+      "Chalcopyrite",
+      "Tochilinite",
+      "Sodium thiosulfate",
+      "Calcium Sulfate"
+    ))
+  ) |> 
+  arrange(compound) |> 
+  mutate(offset = row_number()) |>
+  right_join(
+    xanes_stds,
+    by = join_by(compound)
+  ) |> 
+  mutate(
+    compound = factor(compound, levels = c(
+      "Valleriite",
+      "Millerite",
+      "Heazlewoodite",
+      "Covellite",
+      "Marcasite",
+      "Pyrite",
+      "Pyrrhotite",
+      "Pentlandite",
+      "Sphalerite",
+      "Wurtzite",
+      "Polydymite",
+      "Chalcopyrite",
+      "Tochilinite",
+      "Sodium thiosulfate",
+      "Calcium Sulfate"
+    ))
+  )
+
+```
+
+### Plot mineral standards
+
+```{r}
+xanes_stds_max |> 
+  ggplot(
+    aes(
+      x = energy,
+      y = samnorm + (offset),
+      color = compound
+    )
+  ) +
+  geom_segment(
+    aes(
+      x = ev_at_max, xend = ev_at_max,
+      y = -Inf, yend = samnorm + offset
+    )
+  ) +
+  geom_line(linewidth = 1) +
+  ggprism::annotation_ticks(sides = "tb") +
+  scale_color_viridis_d(end = 0.85) +
+  coord_cartesian(xlim = c(2465, 2505)) +
+  labs(
+    x = "Energy (eV)",
+    y = "",
+    color = ""
   ) +
   theme_bw() +
-  theme()
-  
+  theme(
+    axis.ticks.y = element_blank(),
+    panel.grid.major.y = element_blank(),
+    panel.grid.minor.y = element_blank(),
+    axis.text.y = element_blank()
+  ) +
+  guides(color = guide_legend(reverse=TRUE))
 ```
 
 
 
+# Inflection tests
 
+```{r}
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+```
 
