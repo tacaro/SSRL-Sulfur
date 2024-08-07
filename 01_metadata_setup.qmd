@@ -5,6 +5,8 @@ format: html
 editor: visual
 ---
 
+This code only needs to be run once to create a template metadata file that will be manually annotated and QC'd. The code should be re-run if any changes to the raw `.avg` or `.mu` files are made, so that the `.rds` cache file is updated.
+
 ## Setup
 
 ```{r}
@@ -81,7 +83,7 @@ full_metadata <- full_dataset |>
   )
 ```
 
-Write the full dataset to an excel file
+Write the full metadataset to an excel file
 
 ```{r}
 full_metadata |> writexl::write_xlsx(path = "data/metadata.xlsx")
