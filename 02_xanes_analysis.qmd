@@ -1,13 +1,19 @@
 ---
 title: "02_xanes_analysis"
-format: html
+format:
+  html:
+    fig-height: 7
+    fig-width: 7
 editor: visual
+editor_options: 
+  chunk_output_type: console
 ---
 
 ## Setup
 
 ```{r}
 library(tidyverse)
+library(gt)
 source("source/read_mu_file.R")
 source("source/read_many_mu_files.R")
 source("source/theme_xas.R")
@@ -26,7 +32,29 @@ xanes_w_metadata <- xanes |>
   left_join(metadata, by = join_by(filename))
 
 saveRDS(xanes_w_metadata, file = "cache/xanes_w_metadata.rds")
+writexl::write_xlsx(xanes_w_metadata, path = "cache/xanes_w_metadata.xlsx")
 ```
+
+# Find E0 positions
+
+Here we define E0 as the first point in the normalized spectrum that reaches 0.5 of the post-edge norm value `1`.
+
+```{r}
+e0s <- xanes_w_metadata |> 
+  group_by(filename) |> 
+  arrange(energy) |>  #make sure data is sorted along the energy
+  filter(samnorm >= 0.5) |> # filter for points above 0.5 norm
+  slice(1) |> # find the first point. this is our E0
+  ungroup() |> 
+  rename(e0 = energy, e0_abs = samnorm)
+
+e0s_stds <- e0s |> 
+  filter(!is_TLE, is_standard) |> 
+  select(filename, compound, e0, e0_abs) |> 
+  arrange(e0) |> # rank the e0s in ascending order
+  mutate(offset = row_number()) 
+```
+
 
 ## TLE
 
@@ -41,7 +69,8 @@ xanes_TLE <- xanes_w_metadata |>
   arrange(depth_fct)
 ```
 
-### Find pre-edge max of TLE standards
+### Find peak position of TLE standards
+
 
 ```{r}
 xanes_TLE_STD_max <- xanes_TLE |> 
@@ -58,6 +87,7 @@ xanes_TLE_STD_max <- xanes_TLE |>
 ### Plot TLE XANES
 
 ```{r}
+
 p_tle_standards <- xanes_TLE |> 
   filter(compound != "BA1B_280") |> 
   filter(is_standard) |> 
@@ -262,86 +292,38 @@ xanes_stds <- xanes_w_metadata |>
 
 ```
 
-### Find pre-edge max of mineral standards
-
-```{r}
-xanes_stds_max <- xanes_stds |> 
-  filter(is_standard) |> 
-  group_by(compound) |> 
-  # find the eV that is max samnorm
-  summarise(
-    ev_at_max = energy[which.max(samnorm)],
-    samnorm_at_max = max(samnorm)
-    ) |> 
-  ungroup() |> 
-  mutate(
-    compound = factor(compound, levels = c(
-      "Valleriite",
-      "Millerite",
-      "Heazlewoodite",
-      "Covellite",
-      "Marcasite",
-      "Pyrite",
-      "Pyrrhotite",
-      "Pentlandite",
-      "Sphalerite",
-      "Wurtzite",
-      "Polydymite",
-      "Chalcopyrite",
-      "Tochilinite",
-      "Sodium thiosulfate",
-      "Calcium Sulfate"
-    ))
-  ) |> 
-  arrange(compound) |> 
-  mutate(offset = row_number()) |>
-  right_join(
-    xanes_stds,
-    by = join_by(compound)
-  ) |> 
-  mutate(
-    compound = factor(compound, levels = c(
-      "Valleriite",
-      "Millerite",
-      "Heazlewoodite",
-      "Covellite",
-      "Marcasite",
-      "Pyrite",
-      "Pyrrhotite",
-      "Pentlandite",
-      "Sphalerite",
-      "Wurtzite",
-      "Polydymite",
-      "Chalcopyrite",
-      "Tochilinite",
-      "Sodium thiosulfate",
-      "Calcium Sulfate"
-    ))
-  )
-
-```
-
 ### Plot mineral standards
 
 ```{r}
-xanes_stds_max |> 
+xanes_stds |> 
+  left_join(e0s_stds, by = join_by(filename, compound)) |> 
+  mutate(compound = fct_reorder(as.factor(compound), offset)) |> 
+  arrange(offset) |> 
   ggplot(
     aes(
       x = energy,
-      y = samnorm + (offset),
-      color = compound
+      y = samnorm + offset,
+      color = compound,
+      fill = compound
     )
   ) +
-  geom_segment(
+  geom_line(linewidth = 1, show.legend = FALSE) +
+  geom_point(
+    data = e0s_stds,
     aes(
-      x = ev_at_max, xend = ev_at_max,
-      y = -Inf, yend = samnorm + offset
-    )
+      x = e0, y = e0_abs + offset
+    ),
+    size = 3, color = "black", shape = 21
   ) +
-  geom_line(linewidth = 1) +
+  geom_text(
+    data = e0s_stds,
+    aes(label = compound, y = e0_abs + offset + 1),
+    x = 2495, color = "black", size = 3, hjust = 1
+  ) +
   ggprism::annotation_ticks(sides = "tb") +
   scale_color_viridis_d(end = 0.85) +
-  coord_cartesian(xlim = c(2465, 2505)) +
+  scale_fill_viridis_d(end = 0.85) +
+  coord_cartesian(xlim = c(2465, 2495)) +
   labs(
     x = "Energy (eV)",
     y = "",
@@ -354,6 +336,82 @@ xanes_stds_max |>
     panel.grid.minor.y = element_blank(),
     axis.text.y = element_blank()
   ) +
-  guides(color = guide_legend(reverse=TRUE))
+  guides(color = guide_legend(reverse=TRUE),
+         fill = guide_legend(reverse=TRUE))
+```
+
+
+# Reaction products
+
+```{r}
+xanes_rxns <- xanes_w_metadata |> 
+  filter(str_detect(compound, "Brucite"))
+```
+
+
+```{r}
+# Plot
+xanes_rxns |> 
+  mutate(offset = case_when(
+    str_detect(compound, "Sulfide") ~ 1,
+    str_detect(compound, "Thio") ~ 2
+  )) |> 
+  ggplot(
+    aes(x = energy, y = samnorm + offset, color = compound)
+  ) +
+  geom_line() +
+  ggprism::annotation_ticks(sides = "tb") +
+  theme_xas() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank()
+  )
+
+# compare to tochilinite
+tochilinite_xas <- xanes_w_metadata |> filter(compound == "Sodium thiosulfate")
+
+xanes_rxns |> 
+  bind_rows(tochilinite_xas) |> 
+  mutate(offset = case_when(
+    compound == "Brucite + Sulfide Product" ~ 2,
+    compound == "Brucite + Thiosulfate Product" ~ 1,
+    compound == "Sodium thiosulfate" ~ 0
+  )) |> 
+  ggplot(
+    aes(x = energy, y = samnorm + offset/2, color = compound)
+  ) +
+  geom_line() +
+  ggprism::annotation_ticks(sides = "tb") +
+  coord_cartesian(xlim = c(2460, 2500)) +
+  theme_xas() +
+  theme(
+    axis.text.y = element_blank(),
+    axis.ticks.y = element_blank(),
+    axis.title.y = element_blank()
+  )
+
+```
+
+
+# Core powders
+
+```{r}
+xanes_core_powders <- xanes_w_metadata |> 
+  filter(is_powder, !is_standard, !is.na(core))
+```
+
+```{r}
+xanes_core_powders |> 
+  ggplot(
+    aes(
+      x = energy, y = samnorm,
+      group = filename, color = as.factor(core_depth_m)
+    )
+  ) +
+  geom_line() +
+  facet_wrap(vars(core)) +
+  ggprism::annotation_ticks(sides = "tb") +
+  theme_xas()
 ```
 
