@@ -38,28 +38,50 @@ writexl::write_xlsx(xanes_w_metadata, path = "cache/xanes_w_metadata.xlsx")
 # Find E0 positions
 
 Here we define E0 as the first point in the normalized spectrum that reaches 0.5 of the post-edge norm value `1`.
+To find E0s, we will conduct a linear interpolation of our XANES spectra to provide a more fine-grained assessment of E0 location.
 
 ```{r}
 e0s <- xanes_w_metadata |> 
-  group_by(filename) |> 
-  arrange(energy) |>  #make sure data is sorted along the energy
-  filter(samnorm >= 0.5) |> # filter for points above 0.5 norm
-  slice(1) |> # find the first point. this is our E0
-  ungroup() |> 
-  rename(e0 = energy, e0_abs = samnorm)
-
-e0s_stds <- e0s |> 
-  filter(!is_TLE, is_standard) |> 
-  select(filename, compound, e0, e0_abs) |> 
-  arrange(e0) |> # rank the e0s in ascending order
-  mutate(offset = row_number()) 
+  select(filename, energy, samnorm) |> # select down to columns we want
+  group_by(filename) |> # for each unique file ...
+  # reframing the dataset changes the data to an arbitrary number of columns
+  # and returns an ungrouped data frame
+  reframe(
+    energy_interp = approx(x = energy, y = samnorm, n = 10000)$x,
+    samnorm_interp = approx(x = energy, y = samnorm, n = 10000)$y
+  ) |> 
+  group_by(filename) |> # regroup the data
+  arrange(energy_interp) |> # make sure the data is sorted by energy
+  filter(samnorm_interp >= 0.5) |> # filter for points above 0.5 norm
+  slice(1) |> # find the first point above 0.5 norm. This is our E0
+  ungroup() |> # ungroup the data
+  rename(e0 = energy_interp, e0_abs = samnorm_interp) # give the e0 values specific names
+  
+xanes_w_e0s <- xanes_w_metadata |> 
+  left_join(e0s, by = join_by(filename))
 ```
 
+
+```{r}
+# e0s <- xanes_w_metadata |> 
+#   group_by(filename) |> 
+#   arrange(energy) |>  #make sure data is sorted along the energy
+#   filter(samnorm >= 0.5) |> # filter for points above 0.5 norm
+#   slice(1) |> # find the first point. this is our E0
+#   ungroup() |> 
+#   rename(e0 = energy, e0_abs = samnorm)
+# 
+# e0s_stds <- e0s |> 
+#   filter(!is_TLE, is_standard) |> 
+#   select(filename, compound, e0, e0_abs) |> 
+#   arrange(e0) |> # rank the e0s in ascending order
+#   mutate(offset = row_number()) 
+```
 
 ## TLE
 
 ```{r}
-xanes_TLE <- xanes_w_metadata |> 
+xanes_TLE <- xanes_w_e0s |> 
   filter(is_TLE) |> 
   mutate(
     depth_str = paste(core_depth_m, "m"),
@@ -70,7 +92,6 @@ xanes_TLE <- xanes_w_metadata |>
 ```
 
 ### Find peak position of TLE standards
-
 
 ```{r}
 xanes_TLE_STD_max <- xanes_TLE |> 
@@ -287,16 +308,21 @@ p_tle_combined
 ## Mineral Standards
 
 ```{r}
-xanes_stds <- xanes_w_metadata |> 
+xanes_stds <- xanes_w_e0s |> 
   filter(!is_TLE, is_standard)
 
+xanes_stds_e0s <- xanes_stds |> 
+  select(filename, compound, e0, e0_abs) |> 
+  distinct() |> 
+  arrange(e0) |> 
+  mutate(offset = row_number())
 ```
 
 ### Plot mineral standards
 
 ```{r}
 xanes_stds |> 
-  left_join(e0s_stds, by = join_by(filename, compound)) |> 
+  left_join(xanes_stds_e0s, by = join_by(filename, compound)) |> 
   mutate(compound = fct_reorder(as.factor(compound), offset)) |> 
   arrange(offset) |> 
   ggplot(
@@ -309,17 +335,17 @@ xanes_stds |>
   ) +
   geom_line(linewidth = 1, show.legend = FALSE) +
   geom_point(
-    data = e0s_stds,
+    data = xanes_stds_e0s,
     aes(
       x = e0, y = e0_abs + offset
     ),
     size = 3, color = "black", shape = 21
   ) +
-  geom_text(
-    data = e0s_stds,
-    aes(label = compound, y = e0_abs + offset + 1),
-    x = 2495, color = "black", size = 3, hjust = 1
-  ) +
+  # geom_text(
+  #   data = e0s_stds,
+  #   aes(label = compound, y = e0_abs + offset + 1),
+  #   x = 2495, color = "black", size = 3, hjust = 1
+  # ) +
   ggprism::annotation_ticks(sides = "tb") +
   scale_color_viridis_d(end = 0.85) +
   scale_fill_viridis_d(end = 0.85) +
@@ -340,14 +366,12 @@ xanes_stds |>
          fill = guide_legend(reverse=TRUE))
 ```
 
-
 # Reaction products
 
 ```{r}
 xanes_rxns <- xanes_w_metadata |> 
   filter(str_detect(compound, "Brucite"))
 ```
-
 
 ```{r}
 # Plot
@@ -393,7 +417,6 @@ xanes_rxns |>
 
 ```
 
-
 # Core powders
 
 ```{r}
@@ -414,4 +437,3 @@ xanes_core_powders |>
   ggprism::annotation_ticks(sides = "tb") +
   theme_xas()
 ```
-
