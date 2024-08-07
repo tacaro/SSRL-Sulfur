@@ -24,6 +24,8 @@ Join xanes data and metadata
 ```{r}
 xanes_w_metadata <- xanes |> 
   left_join(metadata, by = join_by(filename))
+
+saveRDS(xanes_w_metadata, file = "cache/xanes_w_metadata.rds")
 ```
 
 ## TLE
@@ -353,13 +355,5 @@ xanes_stds_max |>
     axis.text.y = element_blank()
   ) +
   guides(color = guide_legend(reverse=TRUE))
-```
-
-
-
-# Inflection tests
-
-```{r}
-
 ```
 
