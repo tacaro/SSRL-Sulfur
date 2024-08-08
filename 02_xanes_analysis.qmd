@@ -689,7 +689,7 @@ xanes_core_powders |>
 ## Sulfidization notes
 
 Sulfidization data appears inconclusive at the bulk scale. The only sample of 
-note isBA4A - 10m, which appears to show a reaction progression from oxidized 
+note is BA4A - 10m, which appears to show a reaction progression from oxidized 
 sulfur to reduced sulfur, then to some kind of "disulfide"-like
 phase at ~2472 eV.
 
