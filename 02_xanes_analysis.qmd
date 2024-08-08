@@ -339,7 +339,7 @@ xanes_stds |>
     aes(
       x = e0, y = e0_abs + offset
     ),
-    size = 3, color = "black", shape = 21
+    size = 2, color = "black", shape = 21
   ) +
   # geom_text(
   #   data = e0s_stds,
@@ -360,6 +360,8 @@ xanes_stds |>
     axis.ticks.y = element_blank(),
     panel.grid.major.y = element_blank(),
     panel.grid.minor.y = element_blank(),
+    panel.grid.major.x = element_blank(),
+    panel.grid.minor.x = element_blank(),
     axis.text.y = element_blank()
   ) +
   guides(color = guide_legend(reverse=TRUE),
@@ -420,20 +422,277 @@ xanes_rxns |>
 # Core powders
 
 ```{r}
-xanes_core_powders <- xanes_w_metadata |> 
-  filter(is_powder, !is_standard, !is.na(core))
+xanes_core_powders <- xanes_w_e0s |> 
+  filter(is_powder, !is_standard, !is.na(core)) |> 
+  mutate(
+    sulfidization_time = case_when(
+      !is_sulfidized ~ "Pre-Sulfidization",
+      is_sulfidized & str_detect(filename, "dec22") ~ "5 months",
+      is_sulfidized & str_detect(filename, "dec23") ~ "17 months",
+      is_sulfidized & str_detect(filename, "jun24") ~ "23 months",
+    )
+  ) |> 
+  mutate(
+    core_depth_str = paste0(core, "-", core_depth_m)
+  )
 ```
 
+## BA4A Sulfidization Products
+
 ```{r}
-xanes_core_powders |> 
+xanes_core_powders  |> 
+  filter(
+    core == "BA4A", 
+    core_depth_m %in% c(10, 150)
+    ) |> 
+  filter(!str_detect(filename, "G_pre")) |> 
+  mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
   ggplot(
     aes(
       x = energy, y = samnorm,
-      group = filename, color = as.factor(core_depth_m)
+      group = filename, color = sample_id
     )
   ) +
   geom_line() +
-  facet_wrap(vars(core)) +
+  facet_wrap(vars(core_depth_str), ncol = 1, scales = "free_y") +
   ggprism::annotation_ticks(sides = "tb") +
+  labs(
+    title = "BA4A Sulfidization"
+  ) +
   theme_xas()
 ```
+
+Focus on BA4A_10
+
+```{r}
+xanes_core_powders  |> 
+  filter(core == "BA4A", core_depth_m == 10) |> 
+  mutate(sample_id = as.factor(paste0(core, "-", core_depth_m, "m :", sulfidization_time))) |> 
+  mutate(
+    offset = case_when(
+      str_detect(sulfidization_time, "Pre") ~ 0,
+      str_detect(sulfidization_time, "5 months") ~ 1,
+      str_detect(sulfidization_time, "17 months") ~ 2,
+      str_detect(sulfidization_time, "23 months") ~ 3,
+    ),
+    sample_id = fct_reorder(sample_id, offset)
+  ) |> 
+  ggplot(
+    aes(
+      x = energy, y = samnorm + offset,
+      group = filename, color = sample_id
+    )
+  ) +
+  geom_vline(xintercept = 2470.4, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2472.5, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2482.5, color = "gray", linewidth = 0.5) +
+  geom_line() +
+  scale_color_manual(values = c("#9cc2ff", "#6197ed", "#6585ba", "#021d47")) +
+  geom_text(
+    data = function(df) df |> group_by(filename) |> slice(1) |> ungroup(),
+    aes(label = sample_id, x = 2520, y = samnorm + offset+1.3),
+    size = 3, hjust = 1,
+    color = "black"
+  ) +
+  facet_wrap(vars(core_depth_str), ncol = 1, scales = "free_y") +
+  ggprism::annotation_ticks(sides = "tb") +
+  coord_cartesian(xlim = c(2460, 2520)) +
+  labs(
+    x = "Energy (eV)", y = "",
+    title = "BA4A 10m Sulfidization",
+    caption = "Bulk XANES data \nVertical lines are marked at 2470.4, 2472.5, and 2482.5 eV, respectively."
+  ) +
+  theme_xas() +
+  theme(legend.position = "None")
+```
+
+Focus on BA4A 150
+
+```{r}
+xanes_core_powders |> 
+  filter(core == "BA4A", core_depth_m == 150) |> 
+  mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
+  filter(!str_detect(filename, "G_pre")) |> 
+  mutate(
+    offset = case_when(
+      str_detect(sulfidization_time, "Pre") ~ 0,
+      str_detect(sulfidization_time, "5 months") ~ 1,
+      str_detect(sulfidization_time, "17 months") ~ 2,
+    ),
+    sample_id = fct_reorder(sample_id, offset)
+  ) |> 
+  ggplot(
+    aes(
+      x = energy, y = samnorm + offset,
+      group = filename, color = sample_id
+    )
+  ) +
+  geom_vline(xintercept = 2470.4, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2472.5, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2482.5, color = "gray", linewidth = 0.5) +
+  geom_line() +
+  ggprism::annotation_ticks(sides = "tb") +
+  coord_cartesian(xlim = c(2460, 2520)) +
+  labs(
+    title = "BA4A 150 Sulfidization"
+  ) +
+  theme_xas()
+```
+
+
+## BA1B Sulfidization Products
+
+BA1B all samples
+
+```{r}
+xanes_core_powders |> 
+  filter(core == "BA1B", core_depth_m %in% c(20, 110, 140)) |> 
+  mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
+  
+  ggplot(
+    aes(
+      x = energy, y = samnorm,
+      group = filename, color = sample_id
+    )
+  ) +
+  geom_vline(xintercept = 2470.4, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2472.5, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2482.5, color = "gray", linewidth = 0.5) +
+  geom_line() +
+  facet_wrap(vars(is_sulfidized), ncol = 1) +
+  ggprism::annotation_ticks(sides = "tb") +
+  coord_cartesian(xlim = c(2460, 2520)) +
+  labs(
+    title = "BA1B Sulfidization"
+  ) +
+  theme_xas()
+```
+
+Focus on BA1B 20
+
+```{r}
+xanes_core_powders |> 
+  filter(core == "BA1B", core_depth_m == 20) |> 
+  mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
+  mutate(
+    offset = case_when(
+      str_detect(sulfidization_time, "Pre") ~ 0,
+      str_detect(sulfidization_time, "23 months") ~ 2,
+    ),
+    sample_id = fct_reorder(sample_id, offset)
+  ) |> 
+  ggplot(
+    aes(
+      x = energy, y = samnorm + offset,
+      group = filename, color = sample_id
+    )
+  ) +
+  geom_vline(xintercept = 2470.4, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2472.5, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2482.5, color = "gray", linewidth = 0.5) +
+  geom_line() +
+  ggprism::annotation_ticks(sides = "tb") +
+  coord_cartesian(xlim = c(2460, 2520)) +
+  labs(
+    title = "BA1B 20 Sulfidization"
+  ) +
+  theme_xas()
+```
+
+Focus on BA1B 110
+
+```{r}
+xanes_core_powders |> 
+  filter(core == "BA1B", core_depth_m == 110) |> 
+  mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
+  mutate(
+    offset = case_when(
+      str_detect(sulfidization_time, "Pre") ~ 0,
+      str_detect(sulfidization_time, "23 months") ~ 2,
+    ),
+    sample_id = fct_reorder(sample_id, offset)
+  ) |> 
+  ggplot(
+    aes(
+      x = energy, y = samnorm + offset,
+      group = filename, color = sample_id
+    )
+  ) +
+  geom_vline(xintercept = 2470.4, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2472.5, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2482.5, color = "gray", linewidth = 0.5) +
+  geom_line() +
+  ggprism::annotation_ticks(sides = "tb") +
+  coord_cartesian(xlim = c(2460, 2520)) +
+  labs(
+    title = "BA1B 110 Sulfidization"
+  ) +
+  theme_xas()
+```
+
+Focus on BA1B 140
+
+```{r}
+xanes_core_powders |> 
+  filter(core == "BA1B", core_depth_m == 140) |> 
+  mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
+  mutate(
+    offset = case_when(
+      str_detect(sulfidization_time, "Pre") ~ 0,
+      str_detect(sulfidization_time, "23 months") ~ 2,
+    ),
+    sample_id = fct_reorder(sample_id, offset)
+  ) |> 
+  ggplot(
+    aes(
+      x = energy, y = samnorm + offset,
+      group = filename, color = sample_id
+    )
+  ) +
+  geom_vline(xintercept = 2470.4, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2472.5, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2482.5, color = "gray", linewidth = 0.5) +
+  geom_line() +
+  ggprism::annotation_ticks(sides = "tb") +
+  coord_cartesian(xlim = c(2460, 2520)) +
+  labs(
+    title = "BA1B 20 Sulfidization"
+  ) +
+  theme_xas()
+```
+
+## BA3A sulfidization products
+
+```{r}
+xanes_core_powders |> 
+  filter(core == "BA3A") |> 
+  mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
+  ggplot(
+    aes(
+      x = energy, y = samnorm,
+      group = filename, color = sample_id
+    )
+  ) +
+  geom_vline(xintercept = 2470.4, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2472.5, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2482.5, color = "gray", linewidth = 0.5) +
+  geom_line() +
+  facet_wrap(vars(is_sulfidized), ncol = 1) +
+  ggprism::annotation_ticks(sides = "tb") +
+  coord_cartesian(xlim = c(2460, 2520), ylim = c(-3, 3)) +
+  labs(
+    title = "BA3A Sulfidization"
+  ) +
+  theme_xas()
+```
+
+## Sulfidization notes
+
+Sulfidization data appears inconclusive at the bulk scale. The only sample of 
+note isBA4A - 10m, which appears to show a reaction progression from oxidized 
+sulfur to reduced sulfur, then to some kind of "disulfide"-like
+phase at ~2472 eV.
+
+The remaining BA1B and BA4A samples have too much sulfur in them to show any 
+change, whereas the BA3A samples have too little sulfur such that the SNR is 
+poor.
