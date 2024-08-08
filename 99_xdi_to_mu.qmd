@@ -1,0 +1,92 @@
+---
+title: "99_xdi_to_mu"
+format: html
+editor: visual
+editor_options: 
+  chunk_output_type: console
+---
+
+## Setup
+
+```{r}
+library(tidyverse)
+```
+Test a function for reading xdi files
+```{r}
+read_xdi <- function(file) {
+  require(readr)
+  read_table(
+    file, comment = "#", 
+    col_names = c("energy", "muflour", "X1"),
+    col_types = list(
+      energy = col_double(),
+      muflour = col_double(),
+      X1 = col_logical()
+    )
+    ) |> 
+    select(-X1) |> 
+    mutate(
+      filename = file,
+      sample_id = filename,
+      sample_id = basename(sample_id),
+      sample_id = str_remove(sample_id, ".xdi")
+    )
+}
+```
+test it
+```{r}
+test <- read_xdi("data/bl143_dec23/SSRL_xas_standards/S/Sulfonate Taurine (sulfonate_mu).xdi")
+```
+plot it
+```{r}
+test |> ggplot(
+  aes(x = energy, y = muflour)
+) +
+  geom_line()
+```
+now export it
+
+```{r}
+test |> 
+  select(energy, samnorm = muflour) |>
+  write.table(file = "cache/test.mu",
+              col.names = FALSE, 
+              row.names = FALSE,
+              sep = "\t")
+
+export_mu_from_xdi <- function(df, filename) {
+  df |> 
+  select(energy, samnorm = muflour) |>
+  write.table(file = filename,
+              col.names = FALSE, 
+              row.names = FALSE,
+              sep = "\t")
+}
+
+export_mu_from_xdi(test, filename = "cache/test2.mu")
+```
+
+
+Now fix those standards!
+
+```{r}
+source("source/read_many_xdi.R")
+
+big_df <- read_many_xdi_files("data/bl143_dec23/SSRL_xas_standards/S/")
+
+big.fp <- "data/bl143_dec23/SSRL_xas_standards/S/"
+big.fl <- list.files(path = big.fp, pattern = "\\.xdi$", full.names = TRUE)
+big_standards <- read_many_xdi_files(big.fl) |> 
+  mutate(filename = str_remove(filename, ".xdi"))
+
+
+big_standards |> 
+  group_by(filename) |> 
+  group_walk(~ export_mu_from_xdi(.x, paste0(.y$filename, ".mu")))
+```
+
+
+
+
+
+
