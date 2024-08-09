@@ -11,3 +11,4 @@ fig_output/*
 .DS_Store
 sixpack_140/
 sixpack.exe - Shortcut.lnk
+data/TLE_subset/
