@@ -1,0 +1,35 @@
+---
+title: "03_TLE_LCF_analysis"
+format: html
+editor: visual
+---
+
+```{r}
+library(tidyverse)
+```
+
+```{r}
+lcf <- readxl::read_excel("data/athena_summaries/athena_TLE_LCF_summary.xls", skip = 2)
+```
+
+```{r}
+lcf_summary <- lcf |> 
+  select(!contains("error")) |> 
+  select(!contains("e0")) |> 
+  pivot_longer(cols = -c(Data, rfactor, chinu, chisqr, nvarys, scaleby), 
+               values_to = "weight", names_to = "compound")
+ 
+lcf_summary |> 
+  ggplot() +
+  aes(
+    y = weight,
+    x = Data,
+    color = compound,
+    fill = compound
+  ) +
+  geom_col() +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1)
+  )
+```
+
