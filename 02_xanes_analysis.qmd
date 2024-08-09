@@ -37,8 +37,7 @@ writexl::write_xlsx(xanes_w_metadata, path = "cache/xanes_w_metadata.xlsx")
 
 # Find E0 positions
 
-Here we define E0 as the first point in the normalized spectrum that reaches 0.5 of the post-edge norm value `1`.
-To find E0s, we will conduct a linear interpolation of our XANES spectra to provide a more fine-grained assessment of E0 location.
+Here we define E0 as the first point in the normalized spectrum that reaches 0.5 of the post-edge norm value `1`. To find E0s, we will conduct a linear interpolation of our XANES spectra to provide a more fine-grained assessment of E0 location.
 
 ```{r}
 e0s <- xanes_w_metadata |> 
@@ -60,7 +59,6 @@ e0s <- xanes_w_metadata |>
 xanes_w_e0s <- xanes_w_metadata |> 
   left_join(e0s, by = join_by(filename))
 ```
-
 
 ```{r}
 # e0s <- xanes_w_metadata |> 
@@ -539,7 +537,6 @@ xanes_core_powders |>
   theme_xas()
 ```
 
-
 ## BA1B Sulfidization Products
 
 BA1B all samples
@@ -688,11 +685,6 @@ xanes_core_powders |>
 
 ## Sulfidization notes
 
-Sulfidization data appears inconclusive at the bulk scale. The only sample of 
-note is BA4A - 10m, which appears to show a reaction progression from oxidized 
-sulfur to reduced sulfur, then to some kind of "disulfide"-like
-phase at ~2472 eV.
+Sulfidization data appears inconclusive at the bulk scale. The only sample of note is BA4A - 10m, which appears to show a reaction progression from oxidized sulfur to reduced sulfur, then to some kind of "disulfide"-like phase at \~2472 eV.
 
-The remaining BA1B and BA4A samples have too much sulfur in them to show any 
-change, whereas the BA3A samples have too little sulfur such that the SNR is 
-poor.
+The remaining BA1B and BA4A samples have too much sulfur in them to show any change, whereas the BA3A samples have too little sulfur such that the SNR is poor.
