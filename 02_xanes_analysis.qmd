@@ -32,7 +32,7 @@ xanes_w_metadata <- xanes |>
   left_join(metadata, by = join_by(filename))
 
 saveRDS(xanes_w_metadata, file = "cache/xanes_w_metadata.rds")
-writexl::write_xlsx(xanes_w_metadata, path = "cache/xanes_w_metadata.xlsx")
+#writexl::write_xlsx(xanes_w_metadata, path = "cache/xanes_w_metadata.xlsx")
 ```
 
 # Find E0 positions
@@ -60,21 +60,12 @@ xanes_w_e0s <- xanes_w_metadata |>
   left_join(e0s, by = join_by(filename))
 ```
 
+We also want to calculate the peak positions of the k-edge white lines. We do this by finding the first local maximum of the data.
+
 ```{r}
-# e0s <- xanes_w_metadata |> 
-#   group_by(filename) |> 
-#   arrange(energy) |>  #make sure data is sorted along the energy
-#   filter(samnorm >= 0.5) |> # filter for points above 0.5 norm
-#   slice(1) |> # find the first point. this is our E0
-#   ungroup() |> 
-#   rename(e0 = energy, e0_abs = samnorm)
-# 
-# e0s_stds <- e0s |> 
-#   filter(!is_TLE, is_standard) |> 
-#   select(filename, compound, e0, e0_abs) |> 
-#   arrange(e0) |> # rank the e0s in ascending order
-#   mutate(offset = row_number()) 
+
 ```
+
 
 ## TLE
 
@@ -129,7 +120,7 @@ p_tle_standards <- xanes_TLE |>
     show.legend = FALSE
   ) +
   geom_line(linewidth = 1) +
-  coord_cartesian(xlim = c(2465, 2505)) +
+  coord_cartesian(xlim = c(2465, 2490)) +
   ggprism::annotation_ticks(sides = "tb") +
   facet_wrap(vars(header)) +
   labs(
@@ -141,12 +132,19 @@ p_tle_standards <- xanes_TLE |>
   theme()
 p_tle_standards
 
-# cowplot::save_plot(
-#   plot = p_tle_standards,
-#   filename = "fig_output/tle_standards.pdf",
-#   base_height = 6,
-#   base_width = 9
-# )
+cowplot::save_plot(
+  plot = p_tle_standards,
+  filename = "fig_output/tle_standards.pdf",
+  base_height = 6,
+  base_width = 9
+)
+
+cowplot::save_plot(
+  plot = p_tle_standards,
+  filename = "fig_output/tle_standards.png",
+  base_height = 6,
+  base_width = 9
+)
 ```
 
 Plot TLE Samples
@@ -171,7 +169,7 @@ p_ba1b <- xanes_TLE |>
     linewidth = 0.25
   ) +
   geom_line(linewidth = 1) +
-  coord_cartesian(xlim = c(2465, 2505)) +
+  coord_cartesian(xlim = c(2465, 2490)) +
   scale_color_viridis_d(direction = -1, end = 0.9) +
   facet_wrap(vars(core)) +
   ggprism::annotation_ticks(sides = "tb") +
@@ -205,7 +203,7 @@ p_ba4a <- xanes_TLE |>
     linewidth = 0.25
   ) +
   geom_line(linewidth = 1) +
-  coord_cartesian(xlim = c(2465, 2505)) +
+  coord_cartesian(xlim = c(2465, 2490)) +
   scale_color_viridis_d(direction = -1, end = 0.9) +
   facet_wrap(vars(core)) +
   ggprism::annotation_ticks(sides = "tb") +
@@ -239,7 +237,7 @@ p_ba3a <- xanes_TLE |>
     linewidth = 0.25
   ) +
   geom_line(linewidth = 1) +
-  coord_cartesian(xlim = c(2465, 2505)) +
+  coord_cartesian(xlim = c(2465, 2490)) +
   scale_color_viridis_d(direction = -1, end = 0.9) +
   facet_wrap(vars(core)) +
   ggprism::annotation_ticks(sides = "tb") +
@@ -248,7 +246,7 @@ p_ba3a <- xanes_TLE |>
     y = "Normalized Absorption",
     color = ""
   ) +
-  theme_classic() +
+  theme_xas() +
   theme(
     panel.background = element_rect(color = "black"),
     strip.background = element_rect(color = "#464747", fill = "#464747"),
@@ -277,7 +275,7 @@ p_tle_blanks <- xanes_TLE |>
     show.legend = FALSE
   ) +
   geom_line(linewidth = 1) +
-  coord_cartesian(xlim = c(2465, 2505)) +
+  coord_cartesian(xlim = c(2465, 2490)) +
   ggprism::annotation_ticks(sides = "tb") +
   facet_wrap(vars(header)) +
   labs(
@@ -290,18 +288,135 @@ p_tle_blanks <- xanes_TLE |>
 p_tle_blanks
 ```
 
+Export to pdf and png
+
 ```{r}
 p_tle_combined <- cowplot::plot_grid(p_ba1b, p_ba4a, p_ba3a, p_tle_standards, p_tle_blanks, ncol = 1, align = "hv", axis = "b")
 
 p_tle_combined
 
-# cowplot::save_plot(
-#   filename = "fig_output/tle_combined_plot.pdf",
-#   plot = p_tle_combined,
-#   base_height = 12,
-#   base_width = 8
-# )
+cowplot::save_plot(
+  filename = "fig_output/tle_combined_plot.pdf",
+  plot = p_tle_combined,
+  base_height = 12,
+  base_width = 8
+)
+
+cowplot::save_plot(
+  filename = "fig_output/tle_combined_plot.png",
+  plot = p_tle_combined,
+  base_height = 12,
+  base_width = 8
+)
+
+cowplot::save_plot(
+  filename = "fig_output/ba1b_tle.png", plot = p_ba1b,
+  base_height = 4, base_width = 6
+)
+
+cowplot::save_plot(
+  filename = "fig_output/ba4a_tle.png", plot = p_ba4a,
+  base_height = 4, base_width = 6
+)
+
+cowplot::save_plot(
+  filename = "fig_output/ba3a_tle.png", plot = p_ba3a,
+  base_height = 4, base_width = 6
+)
+
+cowplot::save_plot(
+  filename = "fig_output/blanks_tle.png", plot = p_tle_blanks,
+  base_height = 4, base_width = 6
+)
+
+cowplot::save_plot(
+  filename = "fig_output/stds_tle.png", plot = p_tle_standards,
+  base_height = 4, base_width = 8
+)
 ```
+
+### Compare BA1B70 and black goo to TLE
+
+```{r}
+xanes_compare_TLE <- xanes_w_metadata |> 
+  filter(
+    str_detect(filename, "goo") |
+      str_detect(filename, "JS_ink") |
+      str_detect(filename, "PowderPillow2_TLE_xanes_set2_003_001_fl") | # BA1B_70_TLE
+      str_detect(filename, "data/bl143_dec22/02_mu/BA1B_70_G_001_001_fl.mu") |
+      str_detect(compound, "Glutathione")
+  )
+
+p_compare_TLE <-xanes_compare_TLE |> 
+  mutate(
+    offset = case_when(
+      str_detect(filename, "black_goo") ~ 3,
+      str_detect(filename, "BA1B_70_G") ~ 4,
+      str_detect(filename, "JS_ink") ~ 2,
+      str_detect(filename, "PowderPillow2_TLE_xanes_set2") ~ 5,
+      str_detect(filename, "PowderPillow2_TLE_xanes_set3") ~ 1
+    )
+  ) |> 
+  arrange(offset) |> 
+  ggplot(
+    aes(
+      x = energy,
+      y = samnorm + offset,
+      color = filename
+    )
+  ) +
+  geom_vline(xintercept = c(2472.7, 2474.2)) +
+  geom_line(linewidth = 1) +
+  ggsci::scale_color_npg() +
+  ggprism::annotation_ticks(sides = "tb") +
+  coord_cartesian(xlim = c(2460, 2490))+
+  theme_xas()
+p_compare_TLE
+
+cowplot::save_plot(
+  filename = "fig_output/TLE_compare_to_goo.png",
+  plot = p_compare_TLE,
+  base_height = 5,
+  base_width = 9
+)
+```
+
+
+What about drilling fluid?
+```{r}
+xanes_mud_dayglo <- xanes_w_metadata |> 
+  filter(compound %in% c("Dayglo Tracer", "Drilling Mud"))
+
+p_drilling <- xanes_mud_dayglo |> 
+  group_by(compound) |> 
+  mutate(offset = cur_group_id()) |> 
+  ggplot(
+    aes(
+      x = energy,
+      y = samnorm - 3*offset,
+      color = compound
+    )
+  ) +
+  geom_line(linewidth = 1) +
+  geom_vline(xintercept = c(2481.3, 2482.5)) +
+  ggprism::annotation_ticks(sides = "tb") +
+  coord_cartesian(xlim = c(2460, 2500)) +
+  labs(
+    caption = "Vertical lines @ 2481.3, 2482.5"
+  ) +
+  theme_xas()
+p_drilling
+
+cowplot::save_plot(
+  filename = "fig_output/drilling_xanes.png",
+  plot = p_drilling,
+  base_height = 5, base_width = 7
+)
+```
+
+
+
+
 
 ## Mineral Standards
 
@@ -393,19 +508,21 @@ xanes_rxns |>
   )
 
 # compare to tochilinite
-tochilinite_xas <- xanes_w_metadata |> filter(compound == "Sodium thiosulfate")
+tochilinite_xas <- xanes_w_metadata |> filter(compound %in% c("Sodium thiosulfate", "Tochilinite"))
 
-xanes_rxns |> 
+p_rxns <- xanes_rxns |> 
   bind_rows(tochilinite_xas) |> 
   mutate(offset = case_when(
     compound == "Brucite + Sulfide Product" ~ 2,
     compound == "Brucite + Thiosulfate Product" ~ 1,
-    compound == "Sodium thiosulfate" ~ 0
+    compound == "Sodium thiosulfate" ~ 0,
+    compound == "Tochilinite" ~ 3
   )) |> 
   ggplot(
     aes(x = energy, y = samnorm + offset/2, color = compound)
   ) +
-  geom_line() +
+  geom_vline(xintercept = c(2470.4, 2472.2, 2482.6)) +
+  geom_line(linewidth = 1) +
   ggprism::annotation_ticks(sides = "tb") +
   coord_cartesian(xlim = c(2460, 2500)) +
   theme_xas() +
@@ -414,7 +531,14 @@ xanes_rxns |>
     axis.ticks.y = element_blank(),
     axis.title.y = element_blank()
   )
+p_rxns
 
+
+cowplot::save_plot(
+  filename = "fig_output/sulfide_reaction_products.png",
+  plot = p_rxns,
+  base_height = 6, base_width = 7
+)
 ```
 
 # Core powders
@@ -438,7 +562,7 @@ xanes_core_powders <- xanes_w_e0s |>
 ## BA4A Sulfidization Products
 
 ```{r}
-xanes_core_powders  |> 
+p_ba4a_splus <- xanes_core_powders  |> 
   filter(
     core == "BA4A", 
     core_depth_m %in% c(10, 150)
@@ -453,17 +577,24 @@ xanes_core_powders  |>
   ) +
   geom_line() +
   facet_wrap(vars(core_depth_str), ncol = 1, scales = "free_y") +
+  coord_cartesian(xlim = c(2460, 2500)) +
   ggprism::annotation_ticks(sides = "tb") +
   labs(
     title = "BA4A Sulfidization"
   ) +
   theme_xas()
+p_ba4a_splus
+
+cowplot::save_plot(filename = "fig_output/ba4a_splus.png",
+                   plot = p_ba4a_splus,
+                   base_width = 7, base_height = 5)
+
 ```
 
 Focus on BA4A_10
 
 ```{r}
-xanes_core_powders  |> 
+p_ba4a_10_splus <- xanes_core_powders  |> 
   filter(core == "BA4A", core_depth_m == 10) |> 
   mutate(sample_id = as.factor(paste0(core, "-", core_depth_m, "m :", sulfidization_time))) |> 
   mutate(
@@ -482,9 +613,9 @@ xanes_core_powders  |>
     )
   ) +
   geom_vline(xintercept = 2470.4, color = "gray", linewidth = 0.5) +
-  geom_vline(xintercept = 2472.5, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2472.4, color = "gray", linewidth = 0.5) +
   geom_vline(xintercept = 2482.5, color = "gray", linewidth = 0.5) +
-  geom_line() +
+  geom_line(linewidth = 1) +
   scale_color_manual(values = c("#9cc2ff", "#6197ed", "#6585ba", "#021d47")) +
   geom_text(
     data = function(df) df |> group_by(filename) |> slice(1) |> ungroup(),
@@ -494,20 +625,27 @@ xanes_core_powders  |>
   ) +
   facet_wrap(vars(core_depth_str), ncol = 1, scales = "free_y") +
   ggprism::annotation_ticks(sides = "tb") +
-  coord_cartesian(xlim = c(2460, 2520)) +
+  coord_cartesian(xlim = c(2460, 2500)) +
   labs(
     x = "Energy (eV)", y = "",
     title = "BA4A 10m Sulfidization",
-    caption = "Bulk XANES data \nVertical lines are marked at 2470.4, 2472.5, and 2482.5 eV, respectively."
+    caption = "Bulk XANES data \nVertical lines are marked at 2470.4, 2472.4, and 2482.5 eV, respectively."
   ) +
   theme_xas() +
   theme(legend.position = "None")
+p_ba4a_10_splus
+
+cowplot::save_plot(
+  filename = "fig_output/ba4a_10_splus.png",
+  plot = p_ba4a_10_splus, base_height = 5, base_width = 7
+)
+
 ```
 
 Focus on BA4A 150
 
 ```{r}
-xanes_core_powders |> 
+p_ba4a_150_splus <- xanes_core_powders |> 
   filter(core == "BA4A", core_depth_m == 150) |> 
   mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
   filter(!str_detect(filename, "G_pre")) |> 
@@ -526,7 +664,7 @@ xanes_core_powders |>
     )
   ) +
   geom_vline(xintercept = 2470.4, color = "gray", linewidth = 0.5) +
-  geom_vline(xintercept = 2472.5, color = "gray", linewidth = 0.5) +
+  geom_vline(xintercept = 2472.4, color = "gray", linewidth = 0.5) +
   geom_vline(xintercept = 2482.5, color = "gray", linewidth = 0.5) +
   geom_line() +
   ggprism::annotation_ticks(sides = "tb") +
@@ -535,6 +673,12 @@ xanes_core_powders |>
     title = "BA4A 150 Sulfidization"
   ) +
   theme_xas()
+p_ba4a_150_splus
+
+cowplot::save_plot(
+  filename = "fig_output/ba4a_150_splus.png",
+  plot = p_ba4a_150_splus, base_height = 5, base_width = 7
+)
 ```
 
 ## BA1B Sulfidization Products
@@ -542,7 +686,7 @@ xanes_core_powders |>
 BA1B all samples
 
 ```{r}
-xanes_core_powders |> 
+p_ba1b_splus <- xanes_core_powders |> 
   filter(core == "BA1B", core_depth_m %in% c(20, 110, 140)) |> 
   mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
   
@@ -563,6 +707,13 @@ xanes_core_powders |>
     title = "BA1B Sulfidization"
   ) +
   theme_xas()
+p_ba1b_splus
+
+cowplot::save_plot(
+  filename = "fig_output/ba1b_splus.png",
+  plot = p_ba1b_splus,
+  base_height = 5, base_width = 7
+)
 ```
 
 Focus on BA1B 20
@@ -599,7 +750,7 @@ xanes_core_powders |>
 Focus on BA1B 110
 
 ```{r}
-xanes_core_powders |> 
+p_ba1b_110 <- xanes_core_powders |> 
   filter(core == "BA1B", core_depth_m == 110) |> 
   mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
   mutate(
@@ -625,12 +776,19 @@ xanes_core_powders |>
     title = "BA1B 110 Sulfidization"
   ) +
   theme_xas()
+
+p_ba1b_110
+
+cowplot::save_plot(
+  filename = "fig_output/ba1b_110_splus.png",
+  plot = p_ba1b_110, base_height = 5, base_width = 7
+)
 ```
 
 Focus on BA1B 140
 
 ```{r}
-xanes_core_powders |> 
+p_ba1b_140 <- xanes_core_powders |> 
   filter(core == "BA1B", core_depth_m == 140) |> 
   mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
   mutate(
@@ -653,15 +811,22 @@ xanes_core_powders |>
   ggprism::annotation_ticks(sides = "tb") +
   coord_cartesian(xlim = c(2460, 2520)) +
   labs(
-    title = "BA1B 20 Sulfidization"
+    title = "BA1B 140 Sulfidization"
   ) +
   theme_xas()
+p_ba1b_140
+
+cowplot::save_plot(
+  filename = "fig_output/p_ba1b_140_splus.png",
+  plot = p_ba1b_140,
+  base_height = 5, base_width = 7
+)
 ```
 
 ## BA3A sulfidization products
 
 ```{r}
-xanes_core_powders |> 
+p_ba3a_splus <- xanes_core_powders |> 
   filter(core == "BA3A") |> 
   mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
   ggplot(
@@ -681,6 +846,13 @@ xanes_core_powders |>
     title = "BA3A Sulfidization"
   ) +
   theme_xas()
+p_ba3a_splus
+
+cowplot::save_plot(
+  filename = "fig_output/ba3a_splus.png",
+  plot = p_ba3a_splus, 
+  base_height = 5, base_width = 7
+)
 ```
 
 ## Sulfidization notes
