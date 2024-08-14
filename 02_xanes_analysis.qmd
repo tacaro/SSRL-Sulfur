@@ -876,16 +876,110 @@ p_ba1b_splus
 plotly::ggplotly()
 ```
 
+## Sulfidization comparison
+
+Export all the rock core powders to baseline subtract them in origin
+
 ```{r}
-xanes_core_powders |> 
-  select(energy, samnorm, filename, sample_id) |> 
-  group_by(sample_id) |> 
-  group_walk(~writexl::write_xlsx(.x, paste0("data/spectra_for_origin/", .y$sample_id, ".xlsx")))
+# xanes_core_powders |> 
+#   select(energy, samnorm, filename, sample_id) |> 
+#   group_by(sample_id) |> 
+#   group_walk(~writexl::write_xlsx(.x, paste0("data/spectra_for_origin/", .y$sample_id, ".xlsx")))
 
 ```
 
+Import all the baseline-subtracted XANES from origin
+```{r}
+cnames <- readxl::read_excel("data/spectra_for_origin/BA1B_110_G_006_001_SUBBED.xlsx", n_max = 0) |> 
+    names()
+
+read_many_xlsx <- function(directory) {
+  directory |> 
+    map(readxl::read_xlsx, skip = 2, col_names = cnames) |> 
+    bind_rows(.id = "file")
+}
+
+# read in all the files
+blsub.fp <- "data/origin_baseline_subtracted/"
+blsub.files <- list.files(path = blsub.fp, full.names = TRUE)
+
+xanes_blsub <- read_many_xlsx(directory = blsub.files) |> 
+  rename(
+    samnorm_blsub = `Subtracted_Data Y1`,
+    samnorm_baseline = `Baseline_Data Y1`
+    ) |> 
+  select(-c(`Subtracted_Data X1`,`Baseline_Data X1`, file, samnorm)) |> 
+  left_join(
+    xanes_core_powders, by = join_by(filename, energy)
+  )
 
 
+```
 
+Find appropriate peak windows
+```{r}
+xanes_blsub |> 
+  filter(
+    core == "BA4A", 
+    core_depth_m %in% c(10, 150)
+    ) |> 
+  filter(!str_detect(filename, "G_pre")) |> 
+  mutate(sample_id = paste0(core, "-", core_depth_m, "m :", sulfidization_time)) |> 
+  ggplot(
+    aes(
+      x = energy, y = samnorm_blsub,
+      group = filename, color = sample_id
+    )
+  ) +
+  geom_line() +
+  geom_vline(xintercept = c(2469, 2473)) +
+  geom_vline(xintercept = c(2481, 2484)) +
+  facet_wrap(vars(core_depth_str), ncol = 1, scales = "free_y") +
+  coord_cartesian(xlim = c(2460, 2500)) +
+  ggprism::annotation_ticks(sides = "tb") +
+  labs(
+    title = "BA4A Sulfidization"
+  ) +
+  theme_xas()
+```
+
+```{r}
+sulfide_to_sulfate_ratio <- xanes_blsub |> 
+  group_by(filename) |> 
+  summarise(
+    monoS_area = sum(ifelse(energy > 2469 & energy < 2473, samnorm_blsub, NA), na.rm = TRUE),
+    so4_area = sum(ifelse(energy > 2481 & energy < 2484, samnorm_blsub, NA), na.rm = TRUE)
+  ) |> 
+  mutate(
+    sulfide_to_sulfate_ratio = monoS_area / so4_area
+  ) |> 
+  left_join(metadata, by = join_by(filename))
+
+sulfide_to_sulfate_ratio |> 
+  mutate(
+    sulfidization_time = case_when(
+      !is_sulfidized ~ "Pre-Sulfidization",
+      is_sulfidized & str_detect(filename, "dec22") ~ "5 months",
+      is_sulfidized & str_detect(filename, "dec23") ~ "17 months",
+      is_sulfidized & str_detect(filename, "jun24") ~ "23 months",
+    ),
+    sulfidization_time = factor(
+      sulfidization_time, levels = c("Pre-Sulfidization", "5 months", "17 months","23 months"))
+  ) |> 
+  mutate(
+    core_depth_str = paste0(core, "-", core_depth_m)
+  ) |> 
+  ggplot(
+    aes(
+      x = sulfidization_time,
+      y = sulfide_to_sulfate_ratio,
+      color = core_depth_str,
+      group = core_depth_str
+    )
+  ) +
+  geom_point() +
+  geom_line() +
+  facet_wrap(vars(core), ncol = 1, scales = "free")
+```
 
 
