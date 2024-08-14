@@ -31,7 +31,7 @@ Join xanes data and metadata
 xanes_w_metadata <- xanes |> 
   left_join(metadata, by = join_by(filename))
 
-saveRDS(xanes_w_metadata, file = "cache/xanes_w_metadata.rds")
+#saveRDS(xanes_w_metadata, file = "cache/xanes_w_metadata.rds")
 #writexl::write_xlsx(xanes_w_metadata, path = "cache/xanes_w_metadata.xlsx")
 ```
 
@@ -65,7 +65,6 @@ We also want to calculate the peak positions of the k-edge white lines. We do th
 ```{r}
 
 ```
-
 
 ## TLE
 
@@ -381,8 +380,8 @@ cowplot::save_plot(
 )
 ```
 
-
 What about drilling fluid?
+
 ```{r}
 xanes_mud_dayglo <- xanes_w_metadata |> 
   filter(compound %in% c("Dayglo Tracer", "Drilling Mud"))
@@ -414,10 +413,6 @@ cowplot::save_plot(
 )
 ```
 
-
-
-
-
 ## Mineral Standards
 
 ```{r}
@@ -434,7 +429,7 @@ xanes_stds_e0s <- xanes_stds |>
 ### Plot mineral standards
 
 ```{r}
-xanes_stds |> 
+p_mineral_standards <- xanes_stds |> 
   left_join(xanes_stds_e0s, by = join_by(filename, compound)) |> 
   mutate(compound = fct_reorder(as.factor(compound), offset)) |> 
   arrange(offset) |> 
@@ -446,19 +441,20 @@ xanes_stds |>
       fill = compound
     )
   ) +
-  geom_line(linewidth = 1, show.legend = FALSE) +
-  geom_point(
-    data = xanes_stds_e0s,
-    aes(
-      x = e0, y = e0_abs + offset
-    ),
-    size = 2, color = "black", shape = 21
-  ) +
-  # geom_text(
-  #   data = e0s_stds,
-  #   aes(label = compound, y = e0_abs + offset + 1),
-  #   x = 2495, color = "black", size = 3, hjust = 1
+  geom_vline(xintercept = c(2470.4, 2472.2, 2482.5), color = "gray", linewidth = 0.25) +
+  geom_line(linewidth = 0.8, show.legend = FALSE) +
+  # geom_point(
+  #   data = xanes_stds_e0s,
+  #   aes(
+  #     x = e0, y = e0_abs + offset
+  #   ),
+  #   size = 2, color = "black", shape = 21
   # ) +
+  geom_text(
+    data = function(df) df |> select(offset, compound) |> distinct(),
+    aes(label = compound, y = offset + 1.5),
+    x = 2495, color = "black", size = 3, hjust = 1
+  ) +
   ggprism::annotation_ticks(sides = "tb") +
   scale_color_viridis_d(end = 0.85) +
   scale_fill_viridis_d(end = 0.85) +
@@ -466,7 +462,8 @@ xanes_stds |>
   labs(
     x = "Energy (eV)",
     y = "",
-    color = ""
+    color = "",
+    caption = "Vertical lines @ 2470.4, 2472.2, 2482.5"
   ) +
   theme_bw() +
   theme(
@@ -479,6 +476,14 @@ xanes_stds |>
   ) +
   guides(color = guide_legend(reverse=TRUE),
          fill = guide_legend(reverse=TRUE))
+
+p_mineral_standards
+
+cowplot::save_plot(
+  filename = "fig_output/mineral_standards.pdf",
+  plot = p_mineral_standards,
+  base_height = 14, base_width = 4
+)
 ```
 
 # Reaction products
@@ -585,9 +590,9 @@ p_ba4a_splus <- xanes_core_powders  |>
   theme_xas()
 p_ba4a_splus
 
-cowplot::save_plot(filename = "fig_output/ba4a_splus.png",
-                   plot = p_ba4a_splus,
-                   base_width = 7, base_height = 5)
+# cowplot::save_plot(filename = "fig_output/ba4a_splus.png",
+#                    plot = p_ba4a_splus,
+#                    base_width = 7, base_height = 5)
 
 ```
 
@@ -635,10 +640,10 @@ p_ba4a_10_splus <- xanes_core_powders  |>
   theme(legend.position = "None")
 p_ba4a_10_splus
 
-cowplot::save_plot(
-  filename = "fig_output/ba4a_10_splus.png",
-  plot = p_ba4a_10_splus, base_height = 5, base_width = 7
-)
+# cowplot::save_plot(
+#   filename = "fig_output/ba4a_10_splus.png",
+#   plot = p_ba4a_10_splus, base_height = 5, base_width = 7
+# )
 
 ```
 
@@ -675,10 +680,10 @@ p_ba4a_150_splus <- xanes_core_powders |>
   theme_xas()
 p_ba4a_150_splus
 
-cowplot::save_plot(
-  filename = "fig_output/ba4a_150_splus.png",
-  plot = p_ba4a_150_splus, base_height = 5, base_width = 7
-)
+# cowplot::save_plot(
+#   filename = "fig_output/ba4a_150_splus.png",
+#   plot = p_ba4a_150_splus, base_height = 5, base_width = 7
+# )
 ```
 
 ## BA1B Sulfidization Products
@@ -709,11 +714,11 @@ p_ba1b_splus <- xanes_core_powders |>
   theme_xas()
 p_ba1b_splus
 
-cowplot::save_plot(
-  filename = "fig_output/ba1b_splus.png",
-  plot = p_ba1b_splus,
-  base_height = 5, base_width = 7
-)
+# cowplot::save_plot(
+#   filename = "fig_output/ba1b_splus.png",
+#   plot = p_ba1b_splus,
+#   base_height = 5, base_width = 7
+# )
 ```
 
 Focus on BA1B 20
@@ -779,10 +784,10 @@ p_ba1b_110 <- xanes_core_powders |>
 
 p_ba1b_110
 
-cowplot::save_plot(
-  filename = "fig_output/ba1b_110_splus.png",
-  plot = p_ba1b_110, base_height = 5, base_width = 7
-)
+# cowplot::save_plot(
+#   filename = "fig_output/ba1b_110_splus.png",
+#   plot = p_ba1b_110, base_height = 5, base_width = 7
+# )
 ```
 
 Focus on BA1B 140
@@ -816,11 +821,11 @@ p_ba1b_140 <- xanes_core_powders |>
   theme_xas()
 p_ba1b_140
 
-cowplot::save_plot(
-  filename = "fig_output/p_ba1b_140_splus.png",
-  plot = p_ba1b_140,
-  base_height = 5, base_width = 7
-)
+# cowplot::save_plot(
+#   filename = "fig_output/p_ba1b_140_splus.png",
+#   plot = p_ba1b_140,
+#   base_height = 5, base_width = 7
+# )
 ```
 
 ## BA3A sulfidization products
@@ -848,15 +853,39 @@ p_ba3a_splus <- xanes_core_powders |>
   theme_xas()
 p_ba3a_splus
 
-cowplot::save_plot(
-  filename = "fig_output/ba3a_splus.png",
-  plot = p_ba3a_splus, 
-  base_height = 5, base_width = 7
-)
+# cowplot::save_plot(
+#   filename = "fig_output/ba3a_splus.png",
+#   plot = p_ba3a_splus, 
+#   base_height = 5, base_width = 7
+# )
 ```
 
-## Sulfidization notes
 
-Sulfidization data appears inconclusive at the bulk scale. The only sample of note is BA4A - 10m, which appears to show a reaction progression from oxidized sulfur to reduced sulfur, then to some kind of "disulfide"-like phase at \~2472 eV.
+Sulfidization data appears inconclusive at the bulk scale. The only sample of note is BA4A - 10m, which appears to show a reaction progression from oxidized sulfur to reduced sulfur, then to some kind of "disulfide"-like phase at approx. 2472 eV.
 
 The remaining BA1B and BA4A samples have too much sulfur in them to show any change, whereas the BA3A samples have too little sulfur such that the SNR is poor.
+
+Perhaps we can use the relative amplitudes of the monoS and DiS peaks to assess degree of sulfidization
+
+```{r}
+xanes_core_powders |> pull(energy) |> unique()
+
+p_ba1b_140
+p_ba1b_splus
+
+plotly::ggplotly()
+```
+
+```{r}
+xanes_core_powders |> 
+  select(energy, samnorm, filename, sample_id) |> 
+  group_by(sample_id) |> 
+  group_walk(~writexl::write_xlsx(.x, paste0("data/spectra_for_origin/", .y$sample_id, ".xlsx")))
+
+```
+
+
+
+
+
+
